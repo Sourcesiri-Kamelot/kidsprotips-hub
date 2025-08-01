@@ -1,24 +1,434 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>kidsprotips-hub</title>
-    <meta name="description" content="Lovable Generated Project" />
-    <meta name="author" content="Lovable" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kids Pro Tips Hub</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, getDocs, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js";
 
-    <meta property="og:title" content="kidsprotips-hub" />
-    <meta property="og:description" content="Lovable Generated Project" />
-    <meta property="og:type" content="website" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@lovable_dev" />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-  </head>
-
-  <body>
+        window.firebase = {
+            initializeApp,
+            getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut,
+            getFirestore, collection, getDocs, doc, updateDoc, setDoc,
+            getStorage, ref, uploadBytes, getDownloadURL
+        };
+    </script>
+    <style>
+        @layer base {
+          :root {
+            --background: 245 100% 98%;
+            --foreground: 230 15% 15%;
+            --card: 0 0% 100%;
+            --card-foreground: 230 15% 15%;
+            --popover: 0 0% 100%;
+            --popover-foreground: 230 15% 15%;
+            --primary: 220 100% 55%;
+            --primary-foreground: 0 0% 100%;
+            --primary-glow: 220 100% 70%;
+            --secondary: 45 100% 60%;
+            --secondary-foreground: 230 15% 15%;
+            --success: 140 65% 50%;
+            --success-foreground: 0 0% 100%;
+            --warning: 25 95% 55%;
+            --warning-foreground: 0 0% 100%;
+            --muted: 220 20% 95%;
+            --muted-foreground: 220 15% 45%;
+            --accent: 280 65% 60%;
+            --accent-foreground: 0 0% 100%;
+            --destructive: 0 84% 60%;
+            --destructive-foreground: 0 0% 100%;
+            --border: 220 20% 90%;
+            --input: 220 20% 95%;
+            --ring: 220 100% 55%;
+            --radius: 0.75rem;
+          }
+        }
+        .bg-gradient-hero {
+            background-image: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--accent)));
+        }
+        .bg-gradient-sports {
+            background-image: linear-gradient(135deg, hsl(var(--secondary)), hsl(var(--warning)));
+        }
+        .shadow-primary {
+            box-shadow: 0 10px 30px -10px hsl(var(--primary) / 0.3);
+        }
+        .shadow-glow {
+            box-shadow: 0 0 40px hsl(var(--primary-glow) / 0.4);
+        }
+        .shadow-warm {
+            box-shadow: 0 8px 25px -8px hsl(var(--warning) / 0.3);
+        }
+    </style>
+</head>
+<body class="bg-background">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    <script type="text/babel">
+        const { initializeApp } = window.firebase;
+        const { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } = window.firebase;
+        const { getFirestore, collection, getDocs, doc, updateDoc, setDoc } = window.firebase;
+        const { getStorage, ref, uploadBytes, getDownloadURL } = window.firebase;
+        const { createRoot } = ReactDOM;
+
+        // --- Firebase Configuration ---
+        // =================================================================================
+        // IMPORTANT: Replace the placeholder values below with your own Firebase project's configuration.
+        // You can find these details in your Firebase project settings.
+        // The app will not work correctly until you do this.
+        // =================================================================================
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY", // <-- Replace with your API Key
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com", // <-- Replace with your Auth Domain
+            projectId: "YOUR_PROJECT_ID", // <-- Replace with your Project ID
+            storageBucket: "YOUR_PROJECT_ID.appspot.com", // <-- Replace with your Storage Bucket
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID", // <-- Replace with your Messaging Sender ID
+            appId: "YOUR_APP_ID" // <-- Replace with your App ID
+        };
+
+        // --- Initialize Firebase ---
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const storage = getStorage(app);
+
+        // --- Toast Notification System ---
+        const ToastContext = React.createContext();
+
+        const ToastProvider = ({ children }) => {
+            const [toasts, setToasts] = React.useState([]);
+
+            const addToast = (message, type = 'info') => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, message, type }]);
+                setTimeout(() => {
+                    setToasts(prev => prev.filter(toast => toast.id !== id));
+                }, 4000);
+            };
+
+            const toastColor = {
+                info: 'bg-blue-500',
+                success: 'bg-green-500',
+                error: 'bg-red-500',
+            };
+
+            return (
+                <ToastContext.Provider value={{ addToast }}>
+                    {children}
+                    <div className="fixed bottom-5 right-5 z-50 space-y-2">
+                        {toasts.map(toast => (
+                            <div key={toast.id} className={`p-4 rounded-lg shadow-lg text-white animate-pulse ${toastColor[toast.type] || 'bg-gray-500'}`}>
+                                {toast.message}
+                            </div>
+                        ))}
+                    </div>
+                </ToastContext.Provider>
+            );
+        };
+
+        const useToast = () => React.useContext(ToastContext);
+
+        const App = () => {
+            const [currentState, setCurrentState] = React.useState('landing');
+            const [selectedAge, setSelectedAge] = React.useState('');
+            const [selectedSport, setSelectedSport] = React.useState(null);
+            const [user, setUser] = React.useState(null);
+            const [drills, setDrills] = React.useState([]);
+            const [loading, setLoading] = React.useState(true);
+            const toast = useToast();
+
+            React.useEffect(() => {
+                const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+                    setUser(currentUser);
+                    setLoading(false);
+                });
+                return () => unsubscribe();
+            }, []);
+
+            const signInWithGoogle = async () => {
+                const provider = new GoogleAuthProvider();
+                try {
+                    await signInWithPopup(auth, provider);
+                } catch (error) {
+                    console.error("Error signing in with Google: ", error);
+                    toast.addToast('Error signing in. Please check your API key.', 'error');
+                }
+            };
+
+            const signOutUser = async () => {
+                try {
+                    await signOut(auth);
+                } catch (error) {
+                    console.error("Error signing out: ", error);
+                }
+            };
+
+            const handleGetStarted = () => {
+                if (user) {
+                    setCurrentState('age-select');
+                } else {
+                    signInWithGoogle();
+                }
+            };
+
+            const handleAgeSelect = (ageGroup) => {
+                setSelectedAge(ageGroup);
+                setCurrentState('sport-select');
+            };
+
+            const handleSportSelect = async (sport) => {
+                setSelectedSport(sport);
+                setLoading(true);
+                try {
+                    const drillsCollection = collection(db, "sports", sport.id, "drills");
+                    const drillsSnapshot = await getDocs(drillsCollection);
+                    const drillsList = drillsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setDrills(drillsList);
+                } catch (error) {
+                    console.error("Error fetching drills:", error);
+                    setDrills([]);
+                    toast.addToast('Could not fetch drills.', 'error');
+                }
+                setLoading(false);
+                setCurrentState('training');
+            };
+
+            const handleBack = () => {
+                if (currentState === 'training') setCurrentState('sport-select');
+                else if (currentState === 'sport-select') setCurrentState('age-select');
+                else setCurrentState('landing');
+            };
+
+            const handleDrillComplete = async (drill) => {
+                console.log("Completing drill:", drill.id);
+                toast.addToast(`Great job! You earned ${drill.points} points!`, 'success');
+            };
+
+            const handleHighlightUpload = async (event) => {
+                const file = event.target.files[0];
+                if (!file || !user) return;
+
+                const storageRef = ref(storage, `highlights/${user.uid}/${file.name}`);
+                try {
+                    await uploadBytes(storageRef, file);
+                    const downloadURL = await getDownloadURL(storageRef);
+                    console.log('File available at', downloadURL);
+                    toast.addToast("Highlight uploaded successfully!", 'success');
+                } catch (error) {
+                    console.error("Error uploading file:", error);
+                    toast.addToast("Upload failed. Please try again.", 'error');
+                }
+            };
+
+
+            if (loading) {
+                return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+            }
+
+            const renderState = () => {
+                switch (currentState) {
+                    case 'landing':
+                        return <LandingPage onGetStarted={handleGetStarted} user={user} onSignOut={signOutUser} />;
+                    case 'age-select':
+                        return <AgeSelector onAgeSelect={handleAgeSelect} />;
+                    case 'sport-select':
+                        return <SportsGrid ageGroup={selectedAge} onSportSelect={handleSportSelect} />;
+                    case 'training':
+                        return <TrainingDashboard
+                                    sport={selectedSport}
+                                    ageGroup={selectedAge}
+                                    onBack={handleBack}
+                                    drills={drills}
+                                    onDrillComplete={handleDrillComplete}
+                                    onHighlightUpload={handleHighlightUpload}
+                                />;
+                    default:
+                        return <LandingPage onGetStarted={handleGetStarted} user={user} onSignOut={signOutUser} />;
+                }
+            };
+
+            return (
+                <div className="min-h-screen bg-background">
+                    {renderState()}
+                </div>
+            );
+        };
+
+        const LandingPage = ({ onGetStarted, user, onSignOut }) => (
+            <div className="relative min-h-screen flex items-center justify-center overflow-hidden">
+                <div
+                    className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+                    style={{ backgroundImage: `url(https://images.unsplash.com/photo-1579952363873-27f3bade9f55?q=80&w=2970&auto=format&fit=crop)` }}
+                >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/80 to-purple-600/80" />
+                </div>
+                <div className="relative z-10 text-center text-white max-w-4xl mx-auto px-6">
+                    <h1 className="text-5xl md:text-7xl font-bold mb-6">Lil Playbook</h1>
+                    <p className="text-xl md:text-2xl mb-4 opacity-90">The Ultimate Sports Training App for Young Athletes</p>
+                    <p className="text-lg md:text-xl mb-8 opacity-80">Ages 4-17 • Interactive Drills • Share Your Highlights • Level Up Your Game!</p>
+                    <div className="space-y-4">
+                        {user ? (
+                            <>
+                                <button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-lg font-bold py-4 px-10 text-lg rounded-lg">🚀 Start Your Journey</button>
+                                <button onClick={onSignOut} className="bg-red-500 text-white hover:bg-red-600 hover:scale-105 transition-all duration-300 shadow-lg font-bold py-2 px-6 text-sm rounded-lg ml-4">Sign Out</button>
+                            </>
+                        ) : (
+                            <button onClick={onGetStarted} className="bg-white text-blue-600 hover:bg-white/90 hover:scale-105 transition-all duration-300 shadow-lg font-bold py-4 px-10 text-lg rounded-lg">🚀 Sign In & Get Started</button>
+                        )}
+                        <div className="flex justify-center gap-8 text-sm opacity-80 pt-4">
+                            <span>⚽ Soccer</span>
+                            <span>🏀 Basketball</span>
+                            <span>🏈 Football</span>
+                            <span>🎾 Tennis</span>
+                            <span>⚾ Baseball</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const AgeSelector = ({ onAgeSelect }) => {
+             const ageGroups = [
+                { range: "4-6", title: "Little Stars", description: "Fun basics & movement", emoji: "🌟", color: "from-yellow-400 to-orange-400" },
+                { range: "7-10", title: "Young Athletes", description: "Skills & teamwork", emoji: "🏃‍♂️", color: "from-green-400 to-blue-400" },
+                { range: "11-14", title: "Rising Stars", description: "Strategy & competition", emoji: "🏆", color: "from-purple-400 to-pink-400" },
+                { range: "15-17", title: "Future Pros", description: "Advanced training", emoji: "🏅", color: "from-blue-500 to-purple-600" }
+            ];
+            return (
+                <div className="w-full max-w-4xl mx-auto p-6 flex flex-col items-center justify-center min-h-screen">
+                    <div className="text-center mb-8">
+                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Choose Your Age Group</h2>
+                        <p className="text-gray-500">Let's find the perfect training for you!</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {ageGroups.map((group) => (
+                            <div key={group.range} className="group cursor-pointer hover:scale-105 transition-all duration-300 border-2 hover:border-blue-500 overflow-hidden rounded-lg shadow-lg" onClick={() => onAgeSelect(group.range)}>
+                                <div className={`bg-gradient-to-br ${group.color} p-6 text-center text-white`}>
+                                    <div className="text-4xl mb-2">{group.emoji}</div>
+                                    <h3 className="text-xl font-bold mb-1">Ages {group.range}</h3>
+                                    <p className="text-lg font-semibold mb-2">{group.title}</p>
+                                    <p className="text-sm opacity-90">{group.description}</p>
+                                </div>
+                                <div className="p-4 bg-white">
+                                    <button className="w-full bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Start Training!</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const SportsGrid = ({ ageGroup, onSportSelect }) => {
+            const sportsData = {
+                "4-6": [ { id: "soccer", name: "Soccer", icon: "⚽", description: "Kick, run, and have fun!", drillCount: 12, difficulty: "Easy" }, { id: "basketball", name: "Basketball", icon: "🏀", description: "Dribble and shoot!", drillCount: 10, difficulty: "Easy" } ],
+                "7-10": [ { id: "soccer", name: "Soccer", icon: "⚽", description: "Learn positions and teamwork", drillCount: 20, difficulty: "Medium" }, { id: "basketball", name: "Basketball", icon: "�", description: "Master dribbling and passing", drillCount: 18, difficulty: "Medium" } ],
+                "11-14": [ { id: "soccer", name: "Soccer", icon: "⚽", description: "Advanced tactics and strategy", drillCount: 25, difficulty: "Hard" }, { id: "basketball", name: "Basketball", icon: "🏀", description: "Game strategy and skills", drillCount: 22, difficulty: "Hard" } ],
+                "15-17": [ { id: "soccer", name: "Soccer", icon: "⚽", description: "Elite level training", drillCount: 30, difficulty: "Expert" }, { id: "basketball", name: "Basketball", icon: "🏀", description: "College prep skills", drillCount: 28, difficulty: "Expert" } ]
+            };
+            const sports = sportsData[ageGroup] || sportsData["7-10"];
+            const difficultyColors = { "Easy": "bg-green-500", "Medium": "bg-yellow-500", "Hard": "bg-red-500", "Expert": "bg-purple-600" };
+
+            return (
+                <div className="w-full max-w-6xl mx-auto p-6 min-h-screen flex flex-col justify-center">
+                    <div className="text-center mb-8">
+                        <h2 className="text-3xl font-bold text-gray-800 mb-2">Choose Your Sport</h2>
+                        <p className="text-gray-500">Ages {ageGroup} • Pick your favorite sport to start training!</p>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {sports.map((sport) => (
+                            <div key={sport.id} className="group cursor-pointer hover:scale-105 transition-all duration-300 hover:shadow-xl border-2 hover:border-blue-500 rounded-lg overflow-hidden bg-white" onClick={() => onSportSelect(sport)}>
+                                <div className="text-center p-6">
+                                    <div className="text-6xl mb-2 group-hover:scale-110 transition-transform duration-300">{sport.icon}</div>
+                                    <h3 className="text-xl font-bold">{sport.name}</h3>
+                                    <p className="text-gray-500 mt-2">{sport.description}</p>
+                                    <div className="flex justify-center gap-2 flex-wrap mt-4">
+                                        <span className="bg-gray-200 text-gray-800 text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">{sport.drillCount} drills</span>
+                                        <span className={`${difficultyColors[sport.difficulty]} text-white text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full`}>{sport.difficulty}</span>
+                                    </div>
+                                    <button className="w-full mt-4 bg-gradient-sports text-white font-semibold py-2 px-4 rounded-lg hover:scale-105 transition-all duration-300">Start {sport.name}!</button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const TrainingDashboard = ({ sport, ageGroup, onBack, drills, onDrillComplete, onHighlightUpload }) => {
+            const [userPoints, setUserPoints] = React.useState(185);
+            const completedDrills = drills.filter(drill => drill.completed).length;
+            const progress = drills.length > 0 ? (completedDrills / drills.length) * 100 : 0;
+
+            return (
+                <div className="w-full max-w-6xl mx-auto p-6">
+                    <div className="flex items-center justify-between mb-6">
+                        <button onClick={onBack} className="bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300">← Back to Sports</button>
+                        <div className="text-center">
+                            <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-2"><span className="text-4xl">{sport.icon}</span> {sport.name} Training</h1>
+                            <p className="text-gray-500">Ages {ageGroup}</p>
+                        </div>
+                        <div className="text-right">
+                            <div className="flex items-center gap-2 text-lg font-semibold text-blue-600">
+                                <span className="text-yellow-500">⭐</span> {userPoints} points
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mb-6 bg-gradient-hero text-white p-6 rounded-lg shadow-lg">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 className="text-xl font-bold">Training Progress</h3>
+                                <p className="opacity-90">{completedDrills} of {drills.length} drills completed</p>
+                            </div>
+                            <span className="text-4xl opacity-80">🏆</span>
+                        </div>
+                        <div className="w-full bg-white/20 rounded-full h-3"><div className="bg-white h-3 rounded-full" style={{ width: `${progress}%` }}></div></div>
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div className="lg:col-span-2 bg-white p-6 rounded-lg shadow-lg">
+                            <h2 className="text-xl font-bold mb-4">Training Drills</h2>
+                            <div className="space-y-4">
+                                {drills && drills.length > 0 ? drills.map((drill) => (
+                                    <div key={drill.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
+                                        <div>
+                                            <h4 className="font-semibold">{drill.name}</h4>
+                                            <p className="text-sm text-gray-500">{drill.duration} • {drill.points} points</p>
+                                        </div>
+                                        <button onClick={() => onDrillComplete(drill)} className="bg-green-500 text-white py-1 px-3 rounded-lg hover:bg-green-600">Start</button>
+                                    </div>
+                                )) : <p>No drills available for this sport yet.</p>}
+                            </div>
+                        </div>
+                        <div className="space-y-6">
+                            <div className="bg-white p-6 rounded-lg shadow-lg text-center">
+                                <h2 className="text-xl font-bold mb-2">Share Your Skills!</h2>
+                                <div className="text-6xl">📹</div>
+                                <p className="text-gray-500 mb-4">Upload a highlight of your best moves!</p>
+                                <input type="file" onChange={onHighlightUpload} id="highlight-upload" className="hidden" />
+                                <label htmlFor="highlight-upload" className="cursor-pointer w-full inline-block bg-blue-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Upload Highlight</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Main = () => (
+            <ToastProvider>
+                <App />
+            </ToastProvider>
+        );
+
+        const container = document.getElementById('root');
+        const root = createRoot(container);
+        root.render(<Main />);
+    </script>
+</body>
 </html>
+�
